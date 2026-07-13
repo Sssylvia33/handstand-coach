@@ -44,3 +44,8 @@ tmp/
 
 # Current experimental images
 pose_*.jpg
+
+# Python packaging outputs
+*.egg-info/
+build/
+dist/
