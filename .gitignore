@@ -1,0 +1,46 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Local Conda environments
+.conda/
+conda-meta/
+
+# IDE and operating system
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Model weights
+*.pt
+*.onnx
+
+# Generated application data
+outputs/
+sessions/
+recordings/
+logs/
+
+# Temporary files
+tmp/
+*.log
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+
+# Current experimental images
+pose_*.jpg
