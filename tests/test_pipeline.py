@@ -4,6 +4,7 @@ from numpy.typing import NDArray
 from handstand_coach.models import Keypoint, KeypointName, Pose
 from handstand_coach.pipeline import analyze_frame
 
+
 class FakePoseEstimator:
     """Controllable estimator used only by pipeline tests."""
 
@@ -14,6 +15,7 @@ class FakePoseEstimator:
     def estimate(self, frame: NDArray[np.uint8]) -> Pose | None:
         self.received_frame = frame
         return self._pose
+
 
 def test_analyze_frame_combines_pose_and_frame_metadata() -> None:
     frame = np.zeros((480, 640, 3), dtype=np.uint8)
@@ -39,6 +41,7 @@ def test_analyze_frame_combines_pose_and_frame_metadata() -> None:
     assert result.image_height == 480
     assert result.pose is pose
     assert estimator.received_frame is frame
+
 
 def test_analyze_frame_preserves_frame_when_no_pose_is_detected() -> None:
     frame = np.zeros((720, 1280, 3), dtype=np.uint8)
