@@ -6,6 +6,7 @@ from numpy.typing import NDArray
 from handstand_coach.estimation import PoseEstimator
 from handstand_coach.models import PoseFrame
 
+
 def analyze_frame(
     frame: NDArray[np.uint8],
     estimator: PoseEstimator,

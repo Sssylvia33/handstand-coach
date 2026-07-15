@@ -4,6 +4,7 @@ Created on Sun Jun 14 10:02:50 2026
 
 @author: jiaqi
 """
+
 import cv2
 from ultralytics import YOLO
 

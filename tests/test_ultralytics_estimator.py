@@ -7,6 +7,7 @@ from handstand_coach.ultralytics_estimator import (
     UltralyticsPoseEstimator,
 )
 
+
 def test_build_keypoints_maps_coco_order_to_names() -> None:
     coordinates = np.full(
         (len(COCO_KEYPOINT_NAMES), 2),
@@ -33,6 +34,7 @@ def test_build_keypoints_maps_coco_order_to_names() -> None:
     assert left_shoulder.y == pytest.approx(0.5)
     assert left_shoulder.confidence == pytest.approx(confidences[5])
 
+
 def test_build_keypoints_omits_out_of_frame_coordinates() -> None:
     coordinates = np.full(
         (len(COCO_KEYPOINT_NAMES), 2),
@@ -55,6 +57,7 @@ def test_build_keypoints_omits_out_of_frame_coordinates() -> None:
     assert len(keypoints) == 16
     assert KeypointName.LEFT_WRIST not in names
 
+
 def test_build_keypoints_rejects_unexpected_keypoint_count() -> None:
     coordinates = np.full((16, 2), 0.5, dtype=np.float32)
     confidences = np.full(16, 0.9, dtype=np.float32)
@@ -64,6 +67,7 @@ def test_build_keypoints_rejects_unexpected_keypoint_count() -> None:
             normalized_xy=coordinates,
             confidences=confidences,
         )
+
 
 @pytest.mark.parametrize(
     "frame",
