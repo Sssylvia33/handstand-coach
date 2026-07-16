@@ -20,6 +20,9 @@ dev = [
     "ruff>=0.9,<1",
 ]
 
+[project.scripts]
+handstand-coach = "handstand_coach.cli:main"
+
 [tool.setuptools.packages.find]
 where = ["src"]
 
