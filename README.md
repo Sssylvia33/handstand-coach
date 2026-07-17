@@ -1,5 +1,7 @@
 # Handstand Coach
 
+[![CI](https://github.com/Sssylvia33/handstand-coach/actions/workflows/ci.yml/badge.svg)](https://github.com/Sssylvia33/handstand-coach/actions/workflows/ci.yml)
+
 Handstand Coach is a real-time computer vision application that uses a webcam to detect human pose and visualize body keypoints.
 
 The long-term goal is to analyze handstand alignment and provide explainable posture feedback. The project is also a software-engineering exercise in building a testable computer vision system with clear component boundaries, application-owned data models, and reproducible development workflows.
