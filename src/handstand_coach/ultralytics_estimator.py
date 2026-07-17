@@ -7,6 +7,7 @@ from ultralytics import YOLO
 from ultralytics.engine.results import Results
 
 from handstand_coach.models import Keypoint, KeypointName, Pose
+from handstand_coach.estimation import PoseModelLoadError
 
 COCO_KEYPOINT_NAMES = (
     KeypointName.NOSE,
@@ -33,7 +34,10 @@ class UltralyticsPoseEstimator:
     """Estimate poses using an Ultralytics YOLO pose model."""
 
     def __init__(self, model_path: str | Path) -> None:
-        self._model = YOLO(str(model_path))
+        try:
+            self._model = YOLO(str(model_path))
+        except Exception as error:
+            raise PoseModelLoadError(f"Unable to load pose model: {model_path}") from error
 
     def estimate(self, frame: NDArray[np.uint8]) -> Pose | None:
         """Estimate the highest-confidence person's pose."""

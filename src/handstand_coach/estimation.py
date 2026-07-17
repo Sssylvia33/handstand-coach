@@ -14,3 +14,7 @@ class PoseEstimator(Protocol):
     def estimate(self, frame: NDArray[np.uint8]) -> Pose | None:
         """Estimate one person's pose from a BGR image frame."""
         ...
+
+
+class PoseModelLoadError(RuntimeError):
+    """Raised when a pose-estimation model cannot be loaded."""

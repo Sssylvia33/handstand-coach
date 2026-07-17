@@ -6,6 +6,7 @@ from pathlib import Path
 
 from handstand_coach.capture import VideoSourceError
 from handstand_coach.live import run_live
+from handstand_coach.estimation import PoseModelLoadError
 
 
 def parse_source(value: str) -> int | str:
@@ -86,6 +87,11 @@ def main(argv: Sequence[str] | None = None) -> int:
             parser.exit(
                 status=1,
                 message=f"camera/video error: {error}\n",
+            )
+        except PoseModelLoadError as error:
+            parser.exit(
+                status=1,
+                message=f"pose model error: {error}\n",
             )
 
     return 0

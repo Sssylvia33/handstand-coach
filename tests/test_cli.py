@@ -5,6 +5,7 @@ from argparse import ArgumentTypeError
 
 import handstand_coach.cli as cli_module
 from handstand_coach.capture import VideoSourceError
+from handstand_coach.estimation import PoseModelLoadError
 
 
 @pytest.mark.parametrize(
@@ -109,3 +110,22 @@ def test_main_reports_video_source_error(
     assert exit_result.value.code == 1
     assert "camera/video error" in captured.err
     assert "Unable to open video source" in captured.err
+
+
+def test_main_reports_pose_model_load_error(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    def failing_run_live(**_arguments: object) -> None:
+        raise PoseModelLoadError("Unable to load pose model: missing-model.pt")
+
+    monkeypatch.setattr(cli_module, "run_live", failing_run_live)
+
+    with pytest.raises(SystemExit) as exit_result:
+        cli_module.main(["live", "--model", "missing-model.pt"])
+
+    captured = capsys.readouterr()
+
+    assert exit_result.value.code == 1
+    assert "pose model error" in captured.err
+    assert "Unable to load pose model: missing-model.pt" in captured.err
