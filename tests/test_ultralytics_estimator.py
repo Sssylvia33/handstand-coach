@@ -2,6 +2,8 @@ import numpy as np
 import pytest
 
 from handstand_coach.models import KeypointName
+import handstand_coach.ultralytics_estimator as estimator_module
+from handstand_coach.estimation import PoseModelLoadError
 from handstand_coach.ultralytics_estimator import (
     COCO_KEYPOINT_NAMES,
     UltralyticsPoseEstimator,
@@ -80,3 +82,18 @@ def test_build_keypoints_rejects_unexpected_keypoint_count() -> None:
 def test_validate_frame_rejects_invalid_images(frame: np.ndarray) -> None:
     with pytest.raises(ValueError):
         UltralyticsPoseEstimator._validate_frame(frame)
+
+
+def test_init_translates_model_loading_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def failing_yolo(_model_path: str) -> None:
+        raise FileNotFoundError("model file is missing")
+
+    monkeypatch.setattr(estimator_module, "YOLO", failing_yolo)
+
+    with pytest.raises(
+        PoseModelLoadError,
+        match="Unable to load pose model: missing-model.pt",
+    ):
+        estimator_module.UltralyticsPoseEstimator("missing-model.pt")
