@@ -1,7 +1,8 @@
 """Session-level domain models."""
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
+from pathlib import Path
 
 SESSION_SCHEMA_VERSION = 1
 
@@ -31,3 +32,29 @@ class SessionMetadata:
 
         if not 0.0 <= self.confidence_threshold <= 1.0:
             raise ValueError("confidence_threshold must be between 0.0 and 1.0")
+
+
+def create_session_metadata(
+    *,
+    source: int | str | Path,
+    model: str | Path,
+    confidence_threshold: float,
+    started_at: datetime,
+) -> SessionMetadata:
+    """Create normalized metadata for a new recording session."""
+
+    if started_at.tzinfo is None or started_at.utcoffset() is None:
+        raise ValueError("started_at must be timezone-aware")
+
+    started_at_utc = started_at.astimezone(UTC)
+    session_id = started_at_utc.strftime("%Y-%m-%dT%H%M%S.%fZ")
+
+    normalized_source = str(source) if isinstance(source, Path) else source
+
+    return SessionMetadata(
+        session_id=session_id,
+        started_at_utc=started_at_utc,
+        source=normalized_source,
+        model=str(model),
+        confidence_threshold=confidence_threshold,
+    )
