@@ -1,5 +1,7 @@
 """Live Handstand Coach application."""
 
+from contextlib import ExitStack
+from datetime import UTC, datetime
 from pathlib import Path
 
 import cv2
@@ -7,6 +9,8 @@ import numpy as np
 from numpy.typing import NDArray
 
 from handstand_coach.capture import OpenCVVideoSource
+from handstand_coach.recording import SessionWriter
+from handstand_coach.session import create_session_metadata
 from handstand_coach.stream import AnalyzedFrame, analyze_stream
 from handstand_coach.ultralytics_estimator import UltralyticsPoseEstimator
 from handstand_coach.visualization import PoseRenderer
@@ -19,6 +23,8 @@ def run_live(
     source: int | str | Path,
     model_path: str | Path,
     confidence_threshold: float = 0.5,
+    record_session: bool = False,
+    output_directory: Path = Path("sessions"),
 ) -> None:
     """Run live pose estimation until the source ends or the user quits."""
 
@@ -28,10 +34,36 @@ def run_live(
 
     print(f"Opening video source: {source!r}")
 
+    writer: SessionWriter | None = None
+
     try:
-        with OpenCVVideoSource(source) as video_source:
+        with ExitStack() as stack:
+            video_source = stack.enter_context(OpenCVVideoSource(source))
+
+            if record_session:
+                metadata = create_session_metadata(
+                    source=source,
+                    model=model_path,
+                    confidence_threshold=confidence_threshold,
+                    started_at=datetime.now(UTC),
+                )
+                writer = stack.enter_context(
+                    SessionWriter(
+                        output_directory=output_directory,
+                        metadata=metadata,
+                    )
+                )
+                print(f"Recording session to: {writer.session_directory}")
+
             cv2.namedWindow(WINDOW_NAME, cv2.WINDOW_NORMAL)
-            for result in analyze_stream(video_source, estimator):
+
+            for result in analyze_stream(
+                video_source,
+                estimator,
+            ):
+                if writer is not None:
+                    writer.write_frame(result.pose_frame)
+
                 displayed_image = renderer.render(
                     result.image,
                     result.pose_frame,
@@ -45,11 +77,20 @@ def run_live(
                     print("Quit requested")
                     break
 
-                if cv2.getWindowProperty(WINDOW_NAME, cv2.WND_PROP_VISIBLE) < 1:
+                if (
+                    cv2.getWindowProperty(
+                        WINDOW_NAME,
+                        cv2.WND_PROP_VISIBLE,
+                    )
+                    < 1
+                ):
                     print("Window closed")
                     break
     finally:
         cv2.destroyAllWindows()
+
+    if writer is not None:
+        print(f"Session saved to: {writer.session_directory}")
 
     print("Live session finished; resources released")
 

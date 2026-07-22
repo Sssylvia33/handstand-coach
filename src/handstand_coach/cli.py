@@ -5,8 +5,9 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from handstand_coach.capture import VideoSourceError
-from handstand_coach.live import run_live
 from handstand_coach.estimation import PoseModelLoadError
+from handstand_coach.live import run_live
+from handstand_coach.recording import SessionWriteError
 
 
 def parse_source(value: str) -> int | str:
@@ -66,6 +67,18 @@ def build_parser() -> ArgumentParser:
         default=0.5,
         help="Minimum keypoint confidence from 0.0 to 1.0. Default: 0.5",
     )
+    live_parser.add_argument(
+        "--record-session",
+        action="store_true",
+        help="Save structured pose data for this session.",
+    )
+    live_parser.add_argument(
+        "--output-dir",
+        dest="output_directory",
+        type=Path,
+        default=Path("sessions"),
+        help="Directory used for recorded sessions. Default: sessions",
+    )
 
     return parser
 
@@ -82,6 +95,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                 source=arguments.source,
                 model_path=arguments.model,
                 confidence_threshold=arguments.confidence_threshold,
+                record_session=arguments.record_session,
+                output_directory=arguments.output_directory,
             )
         except VideoSourceError as error:
             parser.exit(
@@ -92,6 +107,11 @@ def main(argv: Sequence[str] | None = None) -> int:
             parser.exit(
                 status=1,
                 message=f"pose model error: {error}\n",
+            )
+        except SessionWriteError as error:
+            parser.exit(
+                status=1,
+                message=f"session recording error: {error}\n",
             )
 
     return 0
