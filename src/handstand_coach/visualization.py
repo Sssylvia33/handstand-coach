@@ -1,10 +1,10 @@
 """Pose skeleton rendering for OpenCV images."""
 
 from collections.abc import Iterable
+
 import cv2
 import numpy as np
 from numpy.typing import NDArray
-
 
 from handstand_coach.models import Keypoint, KeypointName, PoseFrame
 

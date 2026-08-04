@@ -1,13 +1,14 @@
 """Ultralytics implementation of the pose-estimator contract."""
 
 from pathlib import Path
+
 import numpy as np
 from numpy.typing import NDArray
 from ultralytics import YOLO
 from ultralytics.engine.results import Results
 
-from handstand_coach.models import Keypoint, KeypointName, Pose
 from handstand_coach.estimation import PoseModelLoadError
+from handstand_coach.models import Keypoint, KeypointName, Pose
 
 COCO_KEYPOINT_NAMES = (
     KeypointName.NOSE,

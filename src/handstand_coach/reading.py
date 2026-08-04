@@ -1,16 +1,16 @@
 """Load structured pose sessions from the filesystem."""
 
+import json
 from collections.abc import Iterator
 from pathlib import Path
-import json
 
 from handstand_coach.models import PoseFrame
-from handstand_coach.session import SessionMetadata
 from handstand_coach.serialization import (
     RecordValidationError,
     pose_frame_from_record,
     session_metadata_from_record,
 )
+from handstand_coach.session import SessionMetadata
 
 
 class SessionReadError(RuntimeError):

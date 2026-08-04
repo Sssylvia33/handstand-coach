@@ -1,5 +1,6 @@
 import json
 from datetime import UTC, datetime, timedelta, timezone
+
 import pytest
 
 from handstand_coach.models import (

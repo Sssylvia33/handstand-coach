@@ -1,7 +1,7 @@
 """Convert between application pose objects and storage records."""
 
-from datetime import UTC, datetime
 from collections.abc import Mapping
+from datetime import UTC, datetime
 
 from handstand_coach.models import (
     Keypoint,
@@ -169,7 +169,7 @@ def _pose_from_record(
     )
 
     if not isinstance(keypoints_value, list):
-        raise ValueError("keypoints must be a list")
+        raise TypeError("keypoints must be a list")
 
     keypoints = tuple(
         _keypoint_from_record(_require_mapping(value, "keypoint")) for value in keypoints_value

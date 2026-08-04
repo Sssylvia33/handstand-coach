@@ -90,9 +90,8 @@ def test_video_source_releases_capture_that_cannot_open(
     fake = FakeVideoCapture(opened=False)
     replace_video_capture(monkeypatch, fake)
 
-    with pytest.raises(VideoSourceError, match="Unable to open"):
-        with OpenCVVideoSource(0):
-            pass
+    with pytest.raises(VideoSourceError, match="Unable to open"), OpenCVVideoSource(0):
+        pass
 
     assert fake.release_calls == 1
 
@@ -103,9 +102,8 @@ def test_video_source_releases_capture_after_processing_error(
     fake = FakeVideoCapture()
     replace_video_capture(monkeypatch, fake)
 
-    with pytest.raises(RuntimeError, match="Inference failed"):
-        with OpenCVVideoSource(0):
-            raise RuntimeError("Inference failed")
+    with pytest.raises(RuntimeError, match="Inference failed"), OpenCVVideoSource(0):
+        raise RuntimeError("Inference failed")
 
     assert fake.release_calls == 1
 

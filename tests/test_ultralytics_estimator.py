@@ -1,9 +1,9 @@
 import numpy as np
 import pytest
 
-from handstand_coach.models import KeypointName
 import handstand_coach.ultralytics_estimator as estimator_module
 from handstand_coach.estimation import PoseModelLoadError
+from handstand_coach.models import KeypointName
 from handstand_coach.ultralytics_estimator import (
     COCO_KEYPOINT_NAMES,
     UltralyticsPoseEstimator,

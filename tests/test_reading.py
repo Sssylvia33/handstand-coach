@@ -1,16 +1,17 @@
 from datetime import UTC, datetime
 from pathlib import Path
+
 import pytest
 
-from handstand_coach.reading import SessionReader, SessionReadError
-from handstand_coach.recording import SessionWriter
-from handstand_coach.session import SessionMetadata
 from handstand_coach.models import (
     Keypoint,
     KeypointName,
     Pose,
     PoseFrame,
 )
+from handstand_coach.reading import SessionReader, SessionReadError
+from handstand_coach.recording import SessionWriter
+from handstand_coach.session import SessionMetadata
 
 
 def test_read_metadata_restores_metadata_written_by_writer(
