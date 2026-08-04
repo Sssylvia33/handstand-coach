@@ -8,9 +8,11 @@ The long-term goal is to analyze handstand alignment and provide explainable pos
 
 ## Project status
 
-**Week 1 milestone complete:** the application can open a webcam or video source, run pose estimation continuously, display a confidence-aware skeleton, report detection status, and release its resources safely.
+**Week 1 milestone complete:** the application can open a webcam or video source, run pose estimation continuously, display a confidence-aware skeleton, report detection status, and release resources safely.
 
-Session recording, posture metrics, and coaching feedback will be added in later milestones.
+**Week 2 milestone complete:** live sessions can be recorded as versioned structured pose data. Session metadata is stored as JSON, pose frames are streamed to JSON Lines, and recorded sessions can be validated and read lazily without loading the complete recording into memory.
+
+Posture metrics and rule-based coaching feedback are planned for the next milestones.
 
 ## Features
 
@@ -23,6 +25,11 @@ Session recording, posture metrics, and coaching feedback will be added in later
 - Command-line configuration for source, model, and confidence threshold
 - Graceful handling of unavailable cameras and missing models
 - Automated tests that do not require physical camera hardware
+- Optional structured session recording
+- Versioned JSON and JSON Lines session format
+- Preservation of frames where no pose is detected
+- Lazy reading and validation of recorded sessions
+- Clear errors for corrupted or unsupported session data
 
 
 ## Quick start
@@ -94,6 +101,27 @@ Show all available options:
 handstand-coach live --help
 ```
 
+Record a live session:
+
+```bat
+handstand-coach live --source 0 --record-session
+```
+
+Choose a different session output directory:
+
+```bat
+handstand-coach live --source 0 --record-session --output-dir recordings
+```
+
+Each recording creates a unique directory containing:
+
+```text
+metadata.json
+poses.jsonl
+```
+
+The complete data contract is documented in [`docs/session-format.md`](docs/session-format.md).
+
 While the live window is open:
 
 - Press `q` to stop.
@@ -137,6 +165,10 @@ flowchart TD
 | `ultralytics_estimator.py` | Adapts Ultralytics results into application-owned pose objects. |
 | `models.py` | Defines immutable keypoints, poses, and per-frame pose data. |
 | `visualization.py` | Renders confidence-filtered skeletons without depending on Ultralytics result objects. |
+| `session.py` | Defines validated session metadata and the current schema version. |
+| `serialization.py` | Converts application objects to and from versioned storage records. |
+| `recording.py` | Writes metadata and pose frames incrementally to the filesystem. |
+| `reading.py` | Validates metadata and lazily reconstructs recorded pose frames. |
 
 ### Per-frame data flow
 
@@ -156,7 +188,7 @@ flowchart TD
 - **Context-managed video sources:** camera resources are released during normal exits and exceptions.
 - **Separate rendering:** saved pose data can later be visualized without rerunning inference.
 
-This structure also supports future extensions. Week 2 can save `PoseFrame` objects without changing camera or inference code, while a future Raspberry Pi version can introduce another `FrameSource` or `PoseEstimator` implementation.
+This structure supports future extensions. Week 3 posture metrics can consume either live or recorded `PoseFrame` streams without depending on the camera or Ultralytics. A future Raspberry Pi implementation can provide optimized `FrameSource` and `PoseEstimator` adapters without changing the application-owned domain models.
 
 ## Testing
 
@@ -190,14 +222,15 @@ Real-camera behavior is verified separately with a manual acceptance checklist:
 - The generic YOLO pose model is not trained specifically for handstands.
 - Pose estimation is two-dimensional and depends on camera placement.
 - Processing FPS measures inference-pipeline performance, not total display latency.
-- Sessions and pose data are not saved yet.
+- Recordings contain structured pose data but do not currently store raw video or images.
 - Posture metrics and coaching feedback are not implemented yet.
 - A dedicated phone interface is outside the current MVP.
 
 ## Roadmap
 
 - [x] **Week 1 — Live pose pipeline:** camera capture, pose estimation, skeleton rendering, CLI, error handling, and automated tests
-- [ ] **Week 2 — Session data:** record sessions and save structured per-frame pose data
+- [x] **Week 2 — Session data:** record, validate, and lazily read versioned structured pose data
 - [ ] **Week 3 — Posture analysis:** calculate explainable alignment, joint-angle, and balance metrics
 - [ ] **Week 4 — Coaching MVP:** feedback rules, end-to-end tests, documentation, and portfolio demo
+- [ ] **Post-MVP — Optional grounded coaching:** retrieve trusted coaching sources and generate cited explanations from deterministic posture assessments
 - [ ] **Post-MVP — Edge deployment:** evaluate Raspberry Pi deployment using OpenVINO or another optimized inference backend
