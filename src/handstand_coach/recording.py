@@ -6,12 +6,12 @@ from pathlib import Path
 from types import TracebackType
 from typing import Self, TextIO
 
+from handstand_coach.models import PoseFrame
 from handstand_coach.serialization import (
     pose_frame_to_record,
     session_metadata_to_record,
 )
 from handstand_coach.session import SessionMetadata
-from handstand_coach.models import PoseFrame
 
 
 class _WriterState(Enum):

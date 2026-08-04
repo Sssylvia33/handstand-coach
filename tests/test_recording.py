@@ -1,8 +1,15 @@
 import json
 from datetime import UTC, datetime
 from pathlib import Path
+
 import pytest
 
+from handstand_coach.models import (
+    Keypoint,
+    KeypointName,
+    Pose,
+    PoseFrame,
+)
 from handstand_coach.recording import (
     SessionWriteError,
     SessionWriter,
@@ -12,12 +19,6 @@ from handstand_coach.serialization import (
     session_metadata_to_record,
 )
 from handstand_coach.session import SessionMetadata
-from handstand_coach.models import (
-    Keypoint,
-    KeypointName,
-    Pose,
-    PoseFrame,
-)
 
 
 def make_metadata() -> SessionMetadata:
@@ -158,9 +159,8 @@ def test_writer_cannot_be_entered_twice(
     with writer:
         pass
 
-    with pytest.raises(RuntimeError, match="only be entered once"):
-        with writer:
-            pass
+    with pytest.raises(RuntimeError, match="only be entered once"), writer:
+        pass
 
 
 def test_exception_inside_context_closes_writer(
@@ -171,9 +171,8 @@ def test_exception_inside_context_closes_writer(
         metadata=make_metadata(),
     )
 
-    with pytest.raises(ValueError, match="processing failed"):
-        with writer:
-            raise ValueError("processing failed")
+    with pytest.raises(ValueError, match="processing failed"), writer:
+        raise ValueError("processing failed")
 
     with pytest.raises(RuntimeError, match="not open"):
         writer.write_frame(make_pose_frame())
@@ -212,12 +211,14 @@ def test_enter_refuses_to_overwrite_existing_session(
         metadata=make_metadata(),
     )
 
-    with pytest.raises(
-        SessionWriteError,
-        match="already exists",
+    with (
+        pytest.raises(
+            SessionWriteError,
+            match="already exists",
+        ),
+        writer,
     ):
-        with writer:
-            pass
+        pass
 
     assert marker_path.read_text(encoding="utf-8") == "existing session data"
 
@@ -236,11 +237,13 @@ def test_enter_translates_output_filesystem_error(
         metadata=make_metadata(),
     )
 
-    with pytest.raises(
-        SessionWriteError,
-        match="Unable to initialize session",
-    ) as error_result:
-        with writer:
-            pass
+    with (
+        pytest.raises(
+            SessionWriteError,
+            match="Unable to initialize session",
+        ) as error_result,
+        writer,
+    ):
+        pass
 
     assert isinstance(error_result.value.__cause__, OSError)

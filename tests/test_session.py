@@ -39,7 +39,7 @@ def test_session_metadata_rejects_empty_session_id(
 
 
 def test_session_metadata_rejects_datetime_without_timezone() -> None:
-    naive_datetime = datetime(2026, 7, 20, 18, 30)
+    naive_datetime = datetime(2026, 7, 20, 18, 30)  # noqa: DTZ001
 
     with pytest.raises(ValueError, match="timezone-aware"):
         make_metadata(started_at_utc=naive_datetime)
@@ -145,7 +145,7 @@ def test_create_session_metadata_rejects_datetime_without_timezone() -> None:
             source=0,
             model="yolov8n-pose.pt",
             confidence_threshold=0.5,
-            started_at=datetime(2026, 7, 22, 12, 30),
+            started_at=datetime(2026, 7, 22, 12, 30),  # noqa: DTZ001
         )
 
 
