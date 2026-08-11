@@ -19,6 +19,9 @@ dev = [
     "pytest>=8,<10",
     "ruff==0.15.21",
 ]
+analysis = [
+    "matplotlib>=3.10,<4",
+]
 
 [project.scripts]
 handstand-coach = "handstand_coach.cli:main"
