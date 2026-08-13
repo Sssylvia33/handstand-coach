@@ -1,6 +1,7 @@
 """Explore joint-angle quality in a recorded pose session."""
 
 from argparse import ArgumentParser
+from math import isfinite, isnan
 from pathlib import Path
 from statistics import mean, median, pstdev
 
@@ -9,33 +10,7 @@ from matplotlib import pyplot as plt
 from handstand_coach.metrics import calculate_joint_angle
 from handstand_coach.models import KeypointName
 from handstand_coach.reading import SessionReader
-
-
-def exponential_moving_average(
-    values: list[float],
-    *,
-    alpha: float,
-) -> list[float]:
-    """Smooth finite values, resetting after unavailable measurements."""
-
-    smoothed_values: list[float] = []
-    previous_value: float | None = None
-
-    for value in values:
-        if value != value:  # NaN represents an unavailable angle
-            smoothed_values.append(value)
-            previous_value = None
-            continue
-
-        if previous_value is None:
-            smoothed_value = value
-        else:
-            smoothed_value = alpha * value + (1.0 - alpha) * previous_value
-
-        smoothed_values.append(smoothed_value)
-        previous_value = smoothed_value
-
-    return smoothed_values
+from handstand_coach.temporal import ExponentialSmoother
 
 
 def main() -> int:
@@ -69,7 +44,7 @@ def main() -> int:
         type=float,
     )
     parser.add_argument(
-        "--smoothing-alpha",
+        "--smoothing-time-constant",
         type=float,
     )
 
@@ -81,8 +56,10 @@ def main() -> int:
     if arguments.end_time is not None and arguments.end_time <= arguments.start_time:
         parser.error("--end-time must be greater than --start-time")
 
-    if arguments.smoothing_alpha is not None and not 0.0 < arguments.smoothing_alpha <= 1.0:
-        parser.error("--smoothing-alpha must be greater than 0 and at most 1")
+    if arguments.smoothing_time_constant is not None and (
+        not isfinite(arguments.smoothing_time_constant) or arguments.smoothing_time_constant <= 0.0
+    ):
+        parser.error("--smoothing-time-constant must be a finite positive value")
 
     arm_keypoints = {
         "left": (
@@ -102,6 +79,7 @@ def main() -> int:
     angles: list[float] = []
     timestamps: list[float] = []
     plotted_angles: list[float] = []
+    smoothed_angles: list[float] | None = None
 
     total_frames = 0
 
@@ -129,14 +107,28 @@ def main() -> int:
             angles.append(result.degrees)
             plotted_angles.append(result.degrees)
 
-    smoothed_angles = (
-        exponential_moving_average(
-            plotted_angles,
-            alpha=arguments.smoothing_alpha,
-        )
-        if arguments.smoothing_alpha is not None
-        else None
-    )
+        smoothed_angles: list[float] | None = None
+
+        if arguments.smoothing_time_constant is not None:
+            smoother = ExponentialSmoother(time_constant_s=arguments.smoothing_time_constant)
+            smoothed_angles = []
+
+            for timestamp_s, angle in zip(
+                timestamps,
+                plotted_angles,
+                strict=True,
+            ):
+                if isnan(angle):
+                    smoother.reset()
+                    smoothed_angles.append(angle)
+                    continue
+
+                smoothed_angles.append(
+                    smoother.update(
+                        value=angle,
+                        timestamp_s=timestamp_s,
+                    )
+                )
     usable_frames = len(angles)
     usable_percentage = 100.0 * usable_frames / total_frames if total_frames else 0.0
 
@@ -176,7 +168,7 @@ def main() -> int:
                 timestamps,
                 smoothed_angles,
                 linewidth=2,
-                label=f"EMA alpha={arguments.smoothing_alpha}",
+                label=(f"EMA time constant={arguments.smoothing_time_constant:.2f}s"),
             )
 
         if arguments.reference_angle is not None:
