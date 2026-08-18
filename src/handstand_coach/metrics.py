@@ -7,7 +7,7 @@ from handstand_coach.geometry import (
     angle_degrees,
     normalized_to_pixel,
 )
-from handstand_coach.models import KeypointName, PoseFrame
+from handstand_coach.models import BodySide, KeypointName, PoseFrame
 
 
 @dataclass(frozen=True, slots=True)
@@ -17,6 +17,45 @@ class JointAngle:
     joint: KeypointName
     degrees: float
     confidence: float
+
+
+@dataclass(frozen=True, slots=True)
+class SelectedJointAngle:
+    """A joint angle selected from the available anatomical sides."""
+
+    angle: JointAngle
+    source_side: BodySide
+
+
+def select_joint_angle(
+    *,
+    left: JointAngle | None,
+    right: JointAngle | None,
+) -> SelectedJointAngle | None:
+    """Select the available joint angle with the stronger confidence."""
+
+    if left is None and right is None:
+        return None
+    if left is not None and right is None:
+        return SelectedJointAngle(
+            angle=left,
+            source_side=BodySide.LEFT,
+        )
+    if left is None and right is not None:
+        return SelectedJointAngle(
+            angle=right,
+            source_side=BodySide.RIGHT,
+        )
+    if left.confidence >= right.confidence:
+        return SelectedJointAngle(
+            angle=left,
+            source_side=BodySide.LEFT,
+        )
+    else:
+        return SelectedJointAngle(
+            angle=right,
+            source_side=BodySide.RIGHT,
+        )
 
 
 def calculate_joint_angle(

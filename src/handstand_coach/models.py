@@ -5,6 +5,13 @@ from enum import StrEnum
 from math import isfinite
 
 
+class BodySide(StrEnum):
+    """An anatomical side label reported by the pose model."""
+
+    LEFT = "left"
+    RIGHT = "right"
+
+
 class KeypointName(StrEnum):
     """Body keypoints supported by the application."""
 

@@ -7,8 +7,11 @@ from statistics import mean, median, pstdev
 
 from matplotlib import pyplot as plt
 
-from handstand_coach.metrics import calculate_joint_angle
-from handstand_coach.models import KeypointName
+from handstand_coach.metrics import (
+    calculate_joint_angle,
+    select_joint_angle,
+)
+from handstand_coach.models import BodySide, KeypointName
 from handstand_coach.reading import SessionReader
 from handstand_coach.temporal import ExponentialSmoother
 
@@ -31,8 +34,13 @@ def main() -> int:
         type=float,
     )
     parser.add_argument(
+        "--joint",
+        choices=("elbow", "hip"),
+        default="elbow",
+    )
+    parser.add_argument(
         "--side",
-        choices=("left", "right"),
+        choices=("left", "right", "best"),
         default="left",
     )
     parser.add_argument(
@@ -61,25 +69,46 @@ def main() -> int:
     ):
         parser.error("--smoothing-time-constant must be a finite positive value")
 
-    arm_keypoints = {
-        "left": (
+    joint_keypoints = {
+        ("elbow", "left"): (
             KeypointName.LEFT_SHOULDER,
             KeypointName.LEFT_ELBOW,
             KeypointName.LEFT_WRIST,
         ),
-        "right": (
+        ("elbow", "right"): (
             KeypointName.RIGHT_SHOULDER,
             KeypointName.RIGHT_ELBOW,
             KeypointName.RIGHT_WRIST,
         ),
+        ("hip", "left"): (
+            KeypointName.LEFT_SHOULDER,
+            KeypointName.LEFT_HIP,
+            KeypointName.LEFT_KNEE,
+        ),
+        ("hip", "right"): (
+            KeypointName.RIGHT_SHOULDER,
+            KeypointName.RIGHT_HIP,
+            KeypointName.RIGHT_KNEE,
+        ),
     }
-    first_name, vertex_name, third_name = arm_keypoints[arguments.side]
+    if arguments.side == "best":
+        left_names = joint_keypoints[(arguments.joint, "left")]
+        right_names = joint_keypoints[(arguments.joint, "right")]
+    else:
+        selected_names = joint_keypoints[(arguments.joint, arguments.side)]
 
     reader = SessionReader(arguments.session_directory)
     angles: list[float] = []
     timestamps: list[float] = []
     plotted_angles: list[float] = []
     smoothed_angles: list[float] | None = None
+
+    selected_side_counts = {
+        BodySide.LEFT: 0,
+        BodySide.RIGHT: 0,
+    }
+    previous_selected_side: BodySide | None = None
+    side_switches = 0
 
     total_frames = 0
 
@@ -93,13 +122,47 @@ def main() -> int:
         total_frames += 1
         timestamps.append(pose_frame.timestamp_s)
 
-        result = calculate_joint_angle(
-            pose_frame,
-            first_name=first_name,
-            vertex_name=vertex_name,
-            third_name=third_name,
-            confidence_threshold=arguments.confidence_threshold,
-        )
+        if arguments.side == "best":
+            left_result = calculate_joint_angle(
+                pose_frame,
+                first_name=left_names[0],
+                vertex_name=left_names[1],
+                third_name=left_names[2],
+                confidence_threshold=arguments.confidence_threshold,
+            )
+            right_result = calculate_joint_angle(
+                pose_frame,
+                first_name=right_names[0],
+                vertex_name=right_names[1],
+                third_name=right_names[2],
+                confidence_threshold=arguments.confidence_threshold,
+            )
+
+            selected = select_joint_angle(
+                left=left_result,
+                right=right_result,
+            )
+            if selected is None:
+                result = None
+            else:
+                result = selected.angle
+                selected_side_counts[selected.source_side] += 1
+
+                if (
+                    previous_selected_side is not None
+                    and selected.source_side is not previous_selected_side
+                ):
+                    side_switches += 1
+
+                previous_selected_side = selected.source_side
+        else:
+            result = calculate_joint_angle(
+                pose_frame,
+                first_name=selected_names[0],
+                vertex_name=selected_names[1],
+                third_name=selected_names[2],
+                confidence_threshold=arguments.confidence_threshold,
+            )
 
         if result is None:
             plotted_angles.append(float("nan"))
@@ -107,34 +170,32 @@ def main() -> int:
             angles.append(result.degrees)
             plotted_angles.append(result.degrees)
 
-        smoothed_angles: list[float] | None = None
+    if arguments.smoothing_time_constant is not None:
+        smoother = ExponentialSmoother(time_constant_s=arguments.smoothing_time_constant)
+        smoothed_angles = []
 
-        if arguments.smoothing_time_constant is not None:
-            smoother = ExponentialSmoother(time_constant_s=arguments.smoothing_time_constant)
-            smoothed_angles = []
+        for timestamp_s, angle in zip(
+            timestamps,
+            plotted_angles,
+            strict=True,
+        ):
+            if isnan(angle):
+                smoother.reset()
+                smoothed_angles.append(angle)
+                continue
 
-            for timestamp_s, angle in zip(
-                timestamps,
-                plotted_angles,
-                strict=True,
-            ):
-                if isnan(angle):
-                    smoother.reset()
-                    smoothed_angles.append(angle)
-                    continue
-
-                smoothed_angles.append(
-                    smoother.update(
-                        value=angle,
-                        timestamp_s=timestamp_s,
-                    )
+            smoothed_angles.append(
+                smoother.update(
+                    value=angle,
+                    timestamp_s=timestamp_s,
                 )
+            )
     usable_frames = len(angles)
     usable_percentage = 100.0 * usable_frames / total_frames if total_frames else 0.0
 
     print(f"Total frames: {total_frames}")
     print(
-        f"Usable {arguments.side}-elbow angles: "
+        f"Usable {arguments.side}-{arguments.joint} angles: "
         f"{usable_frames}/{total_frames} "
         f"({usable_percentage:.1f}%)"
     )
@@ -152,6 +213,11 @@ def main() -> int:
     else:
         print(f"Standard deviation: {pstdev(angles):.1f} degrees")
 
+    if arguments.side == "best":
+        print(f"Selected left-labelled frames: {selected_side_counts[BodySide.LEFT]}")
+        print(f"Selected right-labelled frames: {selected_side_counts[BodySide.RIGHT]}")
+        print(f"Side switches: {side_switches}")
+
     if arguments.plot_output is not None:
         figure, axis = plt.subplots(figsize=(10, 5))
 
@@ -161,7 +227,7 @@ def main() -> int:
             marker=".",
             markersize=4,
             linewidth=1,
-            label=f"{arguments.side} elbow",
+            label=f"{arguments.side} {arguments.joint}",
         )
         if smoothed_angles is not None:
             axis.plot(
@@ -179,9 +245,9 @@ def main() -> int:
                 label=f"Reference: {arguments.reference_angle:.0f} degrees",
             )
 
-        axis.set_title(f"{arguments.side.title()} elbow angle over time")
+        axis.set_title(f"{arguments.side.title()} {arguments.joint} angle over time")
         axis.set_xlabel("Session time (seconds)")
-        axis.set_ylabel("Elbow angle (degrees)")
+        axis.set_ylabel(f"{arguments.joint.title()} angle (degrees)")
         axis.set_ylim(0.0, 185.0)
         axis.grid(alpha=0.3)
         axis.legend()

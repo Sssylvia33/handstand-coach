@@ -1,7 +1,57 @@
 import pytest
 
-from handstand_coach.metrics import calculate_joint_angle
-from handstand_coach.models import Keypoint, KeypointName, Pose, PoseFrame
+from handstand_coach.metrics import JointAngle, calculate_joint_angle, select_joint_angle
+from handstand_coach.models import BodySide, Keypoint, KeypointName, Pose, PoseFrame
+
+
+def make_joint_angle(
+    *,
+    joint: KeypointName,
+    degrees: float,
+    confidence: float,
+) -> JointAngle:
+    return JointAngle(
+        joint=joint,
+        degrees=degrees,
+        confidence=confidence,
+    )
+
+
+def test_select_joint_angle_returns_only_available_side() -> None:
+    right = make_joint_angle(
+        joint=KeypointName.RIGHT_HIP,
+        degrees=92.0,
+        confidence=0.8,
+    )
+
+    result = select_joint_angle(left=None, right=right)
+
+    assert result is not None
+    assert result.angle is right
+    assert result.source_side is BodySide.RIGHT
+
+
+def test_select_joint_angle_prefers_higher_confidence() -> None:
+    left = make_joint_angle(
+        joint=KeypointName.LEFT_HIP,
+        degrees=90.0,
+        confidence=0.9,
+    )
+    right = make_joint_angle(
+        joint=KeypointName.RIGHT_HIP,
+        degrees=94.0,
+        confidence=0.7,
+    )
+
+    result = select_joint_angle(left=left, right=right)
+
+    assert result is not None
+    assert result.angle is left
+    assert result.source_side is BodySide.LEFT
+
+
+def test_select_joint_angle_returns_none_when_both_sides_are_unavailable() -> None:
+    assert select_joint_angle(left=None, right=None) is None
 
 
 def test_calculate_joint_angle_returns_structured_result() -> None:
