@@ -27,6 +27,17 @@ class SelectedJointAngle:
     source_side: BodySide
 
 
+@dataclass(frozen=True, slots=True)
+class PoseMetrics:
+    """Exercise-independent posture measurements for one pose frame."""
+
+    frame_index: int
+    timestamp_s: float
+    pose_detected: bool
+    elbow_angle: SelectedJointAngle | None
+    hip_angle: SelectedJointAngle | None
+
+
 def select_joint_angle(
     *,
     left: JointAngle | None,
