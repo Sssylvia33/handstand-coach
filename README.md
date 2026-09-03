@@ -230,6 +230,7 @@ Real-camera behavior is verified separately with a manual acceptance checklist:
 
 - [x] **Week 1 — Live pose pipeline:** camera capture, pose estimation, skeleton rendering, CLI, error handling, and automated tests
 - [x] **Week 2 — Session data:** record, validate, and lazily read versioned structured pose data
+- [ ] **Current learning track — Yocto fundamentals:** build a custom QEMU image, package a small target-side application, and manage it with systemd. See [`yocto/README.md`](yocto/README.md).
 - [ ] **Week 3 — Posture analysis:** calculate explainable alignment, joint-angle, and balance metrics
 - [ ] **Week 4 — Coaching MVP:** feedback rules, end-to-end tests, documentation, and portfolio demo
 - [ ] **Post-MVP — Optional grounded coaching:** retrieve trusted coaching sources and generate cited explanations from deterministic posture assessments

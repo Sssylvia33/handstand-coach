@@ -1,0 +1,12 @@
+[Unit]
+Description=Handstand Coach image smoke test
+After=local-fs.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/handstand-hello
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
+
