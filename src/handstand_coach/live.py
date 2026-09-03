@@ -9,12 +9,11 @@ import numpy as np
 from numpy.typing import NDArray
 
 from handstand_coach.capture import OpenCVVideoSource
-from handstand_coach.metrics import JointAngle
-from handstand_coach.models import KeypointName
+from handstand_coach.metrics import PoseMetrics, SelectedJointAngle
 from handstand_coach.recording import SessionWriter
 from handstand_coach.session import create_session_metadata
 from handstand_coach.stream import AnalyzedFrame, analyze_stream
-from handstand_coach.tracking import JointAngleTracker
+from handstand_coach.tracking import create_pose_metrics_tracker
 from handstand_coach.ultralytics_estimator import UltralyticsPoseEstimator
 from handstand_coach.visualization import PoseRenderer
 
@@ -34,6 +33,10 @@ def run_live(
     print(f"Loading pose model: {model_path}")
     estimator = UltralyticsPoseEstimator(model_path)
     renderer = PoseRenderer(confidence_threshold=confidence_threshold)
+
+    metrics_tracker = create_pose_metrics_tracker(
+        confidence_threshold=confidence_threshold, smoothing_time_constant_s=0.14
+    )
 
     print(f"Opening video source: {source!r}")
 
@@ -60,21 +63,6 @@ def run_live(
 
             cv2.namedWindow(WINDOW_NAME, cv2.WINDOW_NORMAL)
 
-            right_tracker = JointAngleTracker(
-                first_name=KeypointName.RIGHT_SHOULDER,
-                vertex_name=KeypointName.RIGHT_ELBOW,
-                third_name=KeypointName.RIGHT_WRIST,
-                confidence_threshold=confidence_threshold,
-                smoothing_time_constant_s=0.14,
-            )
-            left_tracker = JointAngleTracker(
-                first_name=KeypointName.LEFT_SHOULDER,
-                vertex_name=KeypointName.LEFT_ELBOW,
-                third_name=KeypointName.LEFT_WRIST,
-                confidence_threshold=confidence_threshold,
-                smoothing_time_constant_s=0.14,
-            )
-
             for result in analyze_stream(
                 video_source,
                 estimator,
@@ -86,14 +74,12 @@ def run_live(
                     result.image,
                     result.pose_frame,
                 )
-                right_elbow = right_tracker.update(result.pose_frame)
-                left_elbow = left_tracker.update(result.pose_frame)
+                pose_metrics = metrics_tracker.update(result.pose_frame)
 
                 _draw_live_status(
                     displayed_image,
                     result,
-                    left_elbow=left_elbow,
-                    right_elbow=right_elbow,
+                    pose_metrics=pose_metrics,
                 )
 
                 cv2.imshow(WINDOW_NAME, displayed_image)
@@ -121,76 +107,47 @@ def run_live(
     print("Live session finished; resources released")
 
 
+def _format_selected_angle(
+    label: str,
+    selected_angle: SelectedJointAngle | None,
+) -> str:
+    """Format one confidence-selected joint angle for the live display."""
+
+    if selected_angle is None:
+        return f"{label}: unavailable"
+
+    return f"{label} ({selected_angle.source_side.value}): {selected_angle.angle.degrees:.0f} deg"
+
+
 def _draw_live_status(
     image: NDArray[np.uint8],
     result: AnalyzedFrame,
     *,
-    left_elbow: JointAngle | None,
-    right_elbow: JointAngle | None,
+    pose_metrics: PoseMetrics,
 ) -> None:
     """Draw live status information on an annotated image."""
 
-    pose_detected = result.pose_frame.pose is not None
+    pose_detected = pose_metrics.pose_detected
     status = "Pose detected" if pose_detected else "No pose detected"
     status_color = (0, 255, 0) if pose_detected else (0, 0, 255)
 
-    left_text = (
-        "Left elbow: unavailable"
-        if left_elbow is None
-        else f"Left elbow: {left_elbow.degrees:.0f} deg"
+    white = (255, 255, 255)
+    lines = (
+        (status, status_color),
+        (f"Processing FPS: {result.processing_fps:.1f}", white),
+        (_format_selected_angle("Elbow", pose_metrics.elbow_angle), white),
+        (_format_selected_angle("Hip", pose_metrics.hip_angle), white),
+        ("Press q to quit", white),
     )
-    right_text = (
-        "Right elbow: unavailable"
-        if right_elbow is None
-        else f"Right elbow: {right_elbow.degrees:.0f} deg"
-    )
-    cv2.putText(
-        image,
-        status,
-        (20, 30),
-        cv2.FONT_HERSHEY_SIMPLEX,
-        0.7,
-        status_color,
-        2,
-        cv2.LINE_AA,
-    )
-    cv2.putText(
-        image,
-        f"Processing FPS: {result.processing_fps:.1f}",
-        (20, 60),
-        cv2.FONT_HERSHEY_SIMPLEX,
-        0.7,
-        (255, 255, 255),
-        2,
-        cv2.LINE_AA,
-    )
-    cv2.putText(
-        image,
-        left_text,
-        (20, 90),
-        cv2.FONT_HERSHEY_SIMPLEX,
-        0.7,
-        (255, 255, 255),
-        2,
-        cv2.LINE_AA,
-    )
-    cv2.putText(
-        image,
-        right_text,
-        (20, 120),
-        cv2.FONT_HERSHEY_SIMPLEX,
-        0.7,
-        (255, 255, 255),
-        2,
-        cv2.LINE_AA,
-    )
-    cv2.putText(
-        image,
-        "Press q to quit",
-        (20, 150),
-        cv2.FONT_HERSHEY_SIMPLEX,
-        0.6,
-        (255, 255, 255),
-        1,
-        cv2.LINE_AA,
-    )
+
+    for index, (text, color) in enumerate(lines):
+        cv2.putText(
+            image,
+            text,
+            (20, 30 + index * 30),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.7,
+            color,
+            2,
+            cv2.LINE_AA,
+        )

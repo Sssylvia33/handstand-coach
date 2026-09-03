@@ -9,6 +9,7 @@ from handstand_coach.tracking import (
     BilateralJointAngleTracker,
     JointAngleTracker,
     PoseMetricsTracker,
+    create_pose_metrics_tracker,
 )
 
 
@@ -145,6 +146,37 @@ def test_pose_metrics_tracker_assembles_frame_measurements() -> None:
     assert result.hip_angle is hip_result
     elbow_tracker.update.assert_called_once_with(pose_frame)
     hip_tracker.update.assert_called_once_with(pose_frame)
+
+
+def test_create_pose_metrics_tracker_wires_supported_joint_angles() -> None:
+    tracker = create_pose_metrics_tracker(
+        confidence_threshold=0.5,
+        smoothing_time_constant_s=0.14,
+    )
+    pose_frame = PoseFrame(
+        frame_index=0,
+        timestamp_s=0.0,
+        image_width=101,
+        image_height=101,
+        pose=Pose(
+            keypoints=(
+                Keypoint(KeypointName.LEFT_SHOULDER, 0.5, 0.2, 0.9),
+                Keypoint(KeypointName.LEFT_ELBOW, 0.5, 0.5, 0.9),
+                Keypoint(KeypointName.LEFT_WRIST, 0.8, 0.5, 0.9),
+                Keypoint(KeypointName.LEFT_HIP, 0.5, 0.5, 0.9),
+                Keypoint(KeypointName.LEFT_KNEE, 0.5, 0.8, 0.9),
+            )
+        ),
+    )
+
+    result = tracker.update(pose_frame)
+
+    assert result.elbow_angle is not None
+    assert result.elbow_angle.source_side is BodySide.LEFT
+    assert result.elbow_angle.angle.joint is KeypointName.LEFT_ELBOW
+    assert result.hip_angle is not None
+    assert result.hip_angle.source_side is BodySide.LEFT
+    assert result.hip_angle.angle.joint is KeypointName.LEFT_HIP
 
 
 def test_joint_angle_tracker_smooths_using_frame_timestamp() -> None:

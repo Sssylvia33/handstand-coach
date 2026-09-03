@@ -98,3 +98,55 @@ class PoseMetricsTracker:
             hip_angle=hip_result,
         )
         return result
+
+
+def create_pose_metrics_tracker(
+    *,
+    confidence_threshold: float,
+    smoothing_time_constant_s: float,
+) -> PoseMetricsTracker:
+    """Create the default exercise-independent pose metric tracker graph."""
+
+    left_elbow = JointAngleTracker(
+        first_name=KeypointName.LEFT_SHOULDER,
+        vertex_name=KeypointName.LEFT_ELBOW,
+        third_name=KeypointName.LEFT_WRIST,
+        confidence_threshold=confidence_threshold,
+        smoothing_time_constant_s=smoothing_time_constant_s,
+    )
+
+    right_elbow = JointAngleTracker(
+        first_name=KeypointName.RIGHT_SHOULDER,
+        vertex_name=KeypointName.RIGHT_ELBOW,
+        third_name=KeypointName.RIGHT_WRIST,
+        confidence_threshold=confidence_threshold,
+        smoothing_time_constant_s=smoothing_time_constant_s,
+    )
+
+    elbow_tracker = BilateralJointAngleTracker(
+        left_tracker=left_elbow,
+        right_tracker=right_elbow,
+    )
+
+    left_hip = JointAngleTracker(
+        first_name=KeypointName.LEFT_SHOULDER,
+        vertex_name=KeypointName.LEFT_HIP,
+        third_name=KeypointName.LEFT_KNEE,
+        confidence_threshold=confidence_threshold,
+        smoothing_time_constant_s=smoothing_time_constant_s,
+    )
+
+    right_hip = JointAngleTracker(
+        first_name=KeypointName.RIGHT_SHOULDER,
+        vertex_name=KeypointName.RIGHT_HIP,
+        third_name=KeypointName.RIGHT_KNEE,
+        confidence_threshold=confidence_threshold,
+        smoothing_time_constant_s=smoothing_time_constant_s,
+    )
+
+    hip_tracker = BilateralJointAngleTracker(
+        left_tracker=left_hip,
+        right_tracker=right_hip,
+    )
+
+    return PoseMetricsTracker(elbow_tracker=elbow_tracker, hip_tracker=hip_tracker)
